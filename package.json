@@ -1,6 +1,6 @@
 {
   "name": "miniapp-page-assign",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A simple miniapp page assign.",
   "main": "src/index.js",
   "scripts": {
