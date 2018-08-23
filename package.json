@@ -4,7 +4,8 @@
   "description": "A simple miniapp page assign.",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "babel src -d build && mv build/index.js build/miniapp-page-assign.js && uglifyjs build/miniapp-page-assign.js -o build/miniapp-page-assign.min.js"
   },
   "repository": {
     "type": "git",
@@ -21,5 +22,12 @@
   "bugs": {
     "url": "https://github.com/eachmawzw/miniapp-page-assign/issues"
   },
-  "homepage": "https://github.com/eachmawzw/miniapp-page-assign#readme"
+  "homepage": "https://github.com/eachmawzw/miniapp-page-assign#readme",
+  "dependencies": {
+    "uglify-js": "^3.4.7"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.7.0"
+  }
 }

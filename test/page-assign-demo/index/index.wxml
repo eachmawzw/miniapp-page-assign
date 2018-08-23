@@ -1,0 +1,34 @@
+<view>
+  <view>斐波那契数列</view>
+  <view wx:for="{{FibonacciArr}}">
+    <text>{{item}}</text>
+  </view>
+  <button bindtap="tapPush">添加一位</button>
+
+  <view>测试数据:{{demoVal}}</view>  
+
+  <input 
+    class="border"
+    value="{{demoVal}}" 
+    data-key="demoVal" 
+    bindinput="onModel"></input>
+  
+  <textarea
+    class="border"
+    value="{{demoVal}}" 
+    data-key="demoVal" 
+    bindinput="onModel"></textarea>
+
+  <button 
+    data-key="demoVal" 
+    data-value="hello world" 
+    bindtap="onModel">设置value为“hello world”</button>
+
+  <view>测试数据2:{{demoObj.val}}</view>  
+
+  <input 
+    class="border"
+    value="{{demoObj.val}}" 
+    data-key="demoObj.val" 
+    bindinput="onModel"></input>
+</view>
