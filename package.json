@@ -1,0 +1,25 @@
+{
+  "name": "miniapp-page-assign",
+  "version": "0.0.2",
+  "description": "A simple miniapp page assign.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eachmawzw/miniapp-page-assign.git"
+  },
+  "keywords": [
+    "miniapp",
+    "microapp",
+    "page",
+    "assign"
+  ],
+  "author": "eachmawzw@gmail.com",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/eachmawzw/miniapp-page-assign/issues"
+  },
+  "homepage": "https://github.com/eachmawzw/miniapp-page-assign#readme"
+}
