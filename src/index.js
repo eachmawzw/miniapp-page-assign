@@ -1,6 +1,9 @@
+// 当前代理模式：Proxy、defineProperties
+let proxyType = 'Proxy';
+
 // 全局定义proxy键值对
 let proxyKeys = [];
-let proxyVal = ''; 
+let proxyVal = '';
 
 // 封装微信setData方法
 const setData = function (self) {
@@ -26,14 +29,16 @@ const setData = function (self) {
 
 // Proxy监听set,get方法
 const addProxy = function (obj, self) {
-  if (Object.prototype.toString.call(Proxy) == '[object Undefined]') {
-    /* 如果当前环境不支持Proxy对象，提示用户升级微信 */
-    console.warn('The Proxy is not supported, try to upgrade wechat.');
-    wx.showModal({
-      title: '提示',
-      content: '当前微信版本过低，无法使用该功能，请升级到最新微信版本后重试。'
-    });
-    return {};
+  if (typeof Proxy == 'undefined') {
+    /* 如果当前环境不支持Proxy对象，提示用户升级IOS版本 */
+    console.warn('The Proxy is not supported, try to upgrade system.');
+    console.warn('If use android, upgrade system version up 4.4.4');
+    console.warn('If use IPhone, upgrade system version up 10.2');
+    // wx.showModal({
+    //   title: '提示',
+    //   content: '当前微信版本过低，无法使用该功能，请升级到最新微信版本后重试。'
+    // });
+    return null;
   }
   return new Proxy(obj, {
     get: function (target, key) {
@@ -60,6 +65,62 @@ const addProxy = function (obj, self) {
     }
   });
 }
+
+const addProperty = function (data, self) {
+  if (typeof Object.defineProperties == 'undefined') {
+    console.warn('The Object.defineProperties is not supported, try to upgrade wechat.');
+    wx.showModal({
+      title: '提示',
+      content: '当前微信版本过低，无法使用该功能，请升级到最新微信版本后重试。'
+    });
+    return null;
+  }
+
+  var _data = JSON.parse(JSON.stringify(data));
+
+  var initProp = function (obj, name) {
+    return {
+      configurable: true,
+      enumerable: true,
+      get: function () {
+        if (Object.prototype.toString.call(obj[name]) == '[object Object]') {
+          // 如果当前读取的键是对象，
+          // 则无法知晓当前是set还是get，
+          // 在下一个事件轮询时检查数据有没有变化，
+          // 有变化则重新赋值
+          var preSave = JSON.stringify(obj[name]);
+          setTimeout(() => {
+            if (preSave !== JSON.stringify(obj[name])) {
+              proxyKeys[0] = name;
+              proxyVal = obj[name];
+              setData(self);
+            }
+          }, 0);
+        }
+        return obj[name];
+      },
+      set: function (val) {
+        obj[name] = val;
+        proxyKeys[0] = name;
+        proxyVal = obj[name];
+        setData(self);
+      }
+    }
+  }
+
+  var defineProperties = function (obj, s_obj, obj_name) {
+    var props = {};
+    Object.keys(obj).forEach(key => {
+      props[key] = initProp(s_obj, key);
+    });
+    
+    return Object.defineProperties(obj, props);
+  }
+
+  defineProperties(_data, data);
+
+  return _data;
+};
 
 // 设置路由信息，会注册到this上下文和wx全局
 const setRoute = function (routeInfo = {query: {}}, self) {
@@ -94,6 +155,47 @@ const setRoute = function (routeInfo = {query: {}}, self) {
     self.$route = wx.$route;
   }
 }
+
+const getPagePostion = function (page = 'pages/index/index') {
+  // 获取当前指定页面滚动位置
+  let pagePosition = wx.getStorageSync('pagePosition');
+  if (!pagePosition[page]) {
+    return {};
+  }
+  return pagePosition[page];
+};
+
+const updatePagePosition = function (page = 'pages/index/index', init = false) {
+  let pagePosition = wx.getStorageSync('pagePosition');
+  if (!pagePosition) {
+    pagePosition = {};
+  }
+  if (!pagePosition[page]) {
+    pagePosition[page] = {};
+  }
+
+  if (init) {
+    pagePosition[page]['scrollTop'] = 0;
+    pagePosition[page]['maxScrollTop'] = 0;
+    wx.setStorageSync('pagePosition', pagePosition);
+  } else {
+    wx.createSelectorQuery().selectViewport().scrollOffset(position => {
+      let scrollTop = position.scrollTop;
+      let maxScrollTop = pagePosition[page]['maxScrollTop'] || 0;
+      if (scrollTop > maxScrollTop) {
+        maxScrollTop = scrollTop;
+      }
+      pagePosition[page]['scrollTop'] = scrollTop;
+      pagePosition[page]['maxScrollTop'] = maxScrollTop;
+
+      wx.setStorageSync('pagePosition', pagePosition);
+    }).exec();
+  }
+};
+
+const scrollToPosition = function (page = 'pages/index/index') {
+  wx.pageScrollTo({ scrollTop: getPagePostion(page).scrollTop });
+};
 
 const checkVersion = function () {
   if (wx.getUpdateManager) {
@@ -228,6 +330,16 @@ const pageAssign = function (config) {
   this.onLoad = function (options) {
     /* 添加Proxy代理data */
     this.$data = addProxy(this.data, this);
+    proxyType = 'Proxy';
+    if (!this.$data) {
+      // 当前环境不支持Proxy
+      this.$data = addProperty(this.data, this);
+      proxyType = 'defineProperties';
+    }
+    if (!this.$data) {
+      // 当前环境不支持Object.defineProperties
+      this.$data = {};
+    }
 
     /* 更新路由信息 */
     setRoute({query: options}, this);
@@ -238,6 +350,7 @@ const pageAssign = function (config) {
   }
 
   this.onShow = function () {
+    // this.scrollToPosition(this.$route.pagePath);
     if (this._onShow) {
       this._onShow();
     }
@@ -278,13 +391,16 @@ const pageAssign = function (config) {
       return this._onShareAppMessage(obj);
     } else {
       return {
-        title: '这是一个全局分享的标题',
+        title: '这是一个分享标题',
         path: '/pages/index/index'
       }
     }
   }
 
   this.onPageScroll = function (obj) {
+    // 页面滚动时记录页面位置
+    updatePagePosition(this.$route.pagePath);
+
     if (this._onPageScroll) {
       this._onPageScroll(obj);
     }
@@ -309,8 +425,18 @@ const pageAssign = function (config) {
     if (!key) {
       return;
     }
-    this.$data[key] = value;
+    if (proxyType == 'Proxy') {
+      this.$data[key] = value;
+    } else {
+      proxyKeys = key.split('.');
+      proxyVal = value;
+      setData(this);
+    }
   }
+
+  this.getPagePostion = getPagePostion;
+  this.updatePagePosition = updatePagePosition;
+  this.scrollToPosition = scrollToPosition;
 }
 
 module.exports = {
