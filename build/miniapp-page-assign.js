@@ -1,5 +1,8 @@
 'use strict';
 
+// 当前代理模式：Proxy、defineProperties
+var proxyType = 'Proxy';
+
 // 全局定义proxy键值对
 var proxyKeys = [];
 var proxyVal = '';
@@ -28,14 +31,16 @@ var setData = function setData(self) {
 
 // Proxy监听set,get方法
 var addProxy = function addProxy(obj, self) {
-  if (Object.prototype.toString.call(Proxy) == '[object Undefined]') {
-    /* 如果当前环境不支持Proxy对象，提示用户升级微信 */
-    console.warn('The Proxy is not supported, try to upgrade wechat.');
-    wx.showModal({
-      title: '提示',
-      content: '当前微信版本过低，无法使用该功能，请升级到最新微信版本后重试。'
-    });
-    return {};
+  if (typeof Proxy == 'undefined') {
+    /* 如果当前环境不支持Proxy对象，提示用户升级IOS版本 */
+    console.warn('The Proxy is not supported, try to upgrade system.');
+    console.warn('If use android, upgrade system version up 4.4.4');
+    console.warn('If use IPhone, upgrade system version up 10.2');
+    // wx.showModal({
+    //   title: '提示',
+    //   content: '当前微信版本过低，无法使用该功能，请升级到最新微信版本后重试。'
+    // });
+    return null;
   }
   return new Proxy(obj, {
     get: function get(target, key) {
@@ -61,6 +66,62 @@ var addProxy = function addProxy(obj, self) {
       return true;
     }
   });
+};
+
+var addProperty = function addProperty(data, self) {
+  if (typeof Object.defineProperties == 'undefined') {
+    console.warn('The Object.defineProperties is not supported, try to upgrade wechat.');
+    wx.showModal({
+      title: '提示',
+      content: '当前微信版本过低，无法使用该功能，请升级到最新微信版本后重试。'
+    });
+    return null;
+  }
+
+  var _data = JSON.parse(JSON.stringify(data));
+
+  var initProp = function initProp(obj, name) {
+    return {
+      configurable: true,
+      enumerable: true,
+      get: function get() {
+        if (Object.prototype.toString.call(obj[name]) == '[object Object]') {
+          // 如果当前读取的键是对象，
+          // 则无法知晓当前是set还是get，
+          // 在下一个事件轮询时检查数据有没有变化，
+          // 有变化则重新赋值
+          var preSave = JSON.stringify(obj[name]);
+          setTimeout(function () {
+            if (preSave !== JSON.stringify(obj[name])) {
+              proxyKeys[0] = name;
+              proxyVal = obj[name];
+              setData(self);
+            }
+          }, 0);
+        }
+        return obj[name];
+      },
+      set: function set(val) {
+        obj[name] = val;
+        proxyKeys[0] = name;
+        proxyVal = obj[name];
+        setData(self);
+      }
+    };
+  };
+
+  var defineProperties = function defineProperties(obj, s_obj, obj_name) {
+    var props = {};
+    Object.keys(obj).forEach(function (key) {
+      props[key] = initProp(s_obj, key);
+    });
+
+    return Object.defineProperties(obj, props);
+  };
+
+  defineProperties(_data, data);
+
+  return _data;
 };
 
 // 设置路由信息，会注册到this上下文和wx全局
@@ -98,6 +159,54 @@ var setRoute = function setRoute() {
   if (self) {
     self.$route = wx.$route;
   }
+};
+
+var getPagePostion = function getPagePostion() {
+  var page = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'pages/index/index';
+
+  // 获取当前指定页面滚动位置
+  var pagePosition = wx.getStorageSync('pagePosition');
+  if (!pagePosition[page]) {
+    return {};
+  }
+  return pagePosition[page];
+};
+
+var updatePagePosition = function updatePagePosition() {
+  var page = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'pages/index/index';
+  var init = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+  var pagePosition = wx.getStorageSync('pagePosition');
+  if (!pagePosition) {
+    pagePosition = {};
+  }
+  if (!pagePosition[page]) {
+    pagePosition[page] = {};
+  }
+
+  if (init) {
+    pagePosition[page]['scrollTop'] = 0;
+    pagePosition[page]['maxScrollTop'] = 0;
+    wx.setStorageSync('pagePosition', pagePosition);
+  } else {
+    wx.createSelectorQuery().selectViewport().scrollOffset(function (position) {
+      var scrollTop = position.scrollTop;
+      var maxScrollTop = pagePosition[page]['maxScrollTop'] || 0;
+      if (scrollTop > maxScrollTop) {
+        maxScrollTop = scrollTop;
+      }
+      pagePosition[page]['scrollTop'] = scrollTop;
+      pagePosition[page]['maxScrollTop'] = maxScrollTop;
+
+      wx.setStorageSync('pagePosition', pagePosition);
+    }).exec();
+  }
+};
+
+var scrollToPosition = function scrollToPosition() {
+  var page = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'pages/index/index';
+
+  wx.pageScrollTo({ scrollTop: getPagePostion(page).scrollTop });
 };
 
 var checkVersion = function checkVersion() {
@@ -160,6 +269,16 @@ var pageAssign = function pageAssign(config) {
   var callbackList = ['onLoad', 'onShow', 'onReady', 'onHide', 'onUnload', 'onPullDownRefresh', 'onReachBottom', 'onShareAppMessage', 'onPageScroll', 'onTabItemTap'];
 
   /*
+   * 禁止一些被使用的方法名
+   * onModel 监听数据更新，双向绑定
+   * getPagePostion 获取页面位置
+   * updatePagePosition 更新页面位置
+   * scrollToPosition 滚动至页面位置
+   * checkVersion 检查小程序版本
+  */
+  var glbalMethods = ['onModel', 'getPagePostion', 'updatePagePosition', 'scrollToPosition', 'checkVersion'];
+
+  /*
    * 原生小程序中一些按钮handler
    * bindGetUserInfo 用户点击该按钮时，会返回获取到的用户信息
    * bindContact 客服消息回调
@@ -190,7 +309,7 @@ var pageAssign = function pageAssign(config) {
   }
 
   /* 注册自定义事件 */
-  var forbidMethods = [].concat(callbackList);
+  var forbidMethods = [].concat(callbackList).concat(glbalMethods);
   // const forbidMethods = [].concat(callbackList).concat(btnHanlder);
 
   /* 页面原生回调注册 */
@@ -224,9 +343,19 @@ var pageAssign = function pageAssign(config) {
   this.onLoad = function (options) {
     /* 添加Proxy代理data */
     this.$data = addProxy(this.data, this);
+    proxyType = 'Proxy';
+    if (!this.$data) {
+      // 当前环境不支持Proxy
+      this.$data = addProperty(this.data, this);
+      proxyType = 'defineProperties';
+    }
+    if (!this.$data) {
+      // 当前环境不支持Object.defineProperties
+      this.$data = {};
+    }
 
     /* 更新路由信息 */
-    setRoute({ query: options }, this);
+    this.setRoute({ query: options }, this);
 
     if (this._onLoad) {
       this._onLoad(options);
@@ -234,6 +363,7 @@ var pageAssign = function pageAssign(config) {
   };
 
   this.onShow = function () {
+    // this.scrollToPosition(this.$route.pagePath);
     if (this._onShow) {
       this._onShow();
     }
@@ -274,14 +404,16 @@ var pageAssign = function pageAssign(config) {
       return this._onShareAppMessage(obj);
     } else {
       return {
-        title: '集合派',
-        path: '/pages/index/index',
-        imageUrl: 'https://jihepai-pro.oss-cn-hangzhou.aliyuncs.com/static/img/logo-square.jpeg'
+        title: '这是一个分享标题',
+        path: '/pages/index/index'
       };
     }
   };
 
   this.onPageScroll = function (obj) {
+    // 页面滚动时记录页面位置
+    updatePagePosition(this.$route.pagePath);
+
     if (this._onPageScroll) {
       this._onPageScroll(obj);
     }
@@ -306,8 +438,25 @@ var pageAssign = function pageAssign(config) {
     if (!key) {
       return;
     }
-    this.$data[key] = value;
+    if (proxyType == 'Proxy') {
+      this.$data[key] = value;
+    } else {
+      proxyKeys = key.split('.');
+      proxyVal = value;
+      setData(this);
+    }
   };
+
+  // 注册setRoute
+  this.setRoute = setRoute;
+  // 注册获取页面位置方法
+  this.getPagePostion = getPagePostion;
+  // 注册更新页面位置方法
+  this.updatePagePosition = updatePagePosition;
+  // 注册滚动至页面位置方法
+  this.scrollToPosition = scrollToPosition;
+  // 注册检查小程序版本方法
+  this.checkVersion = checkVersion;
 };
 
 module.exports = {

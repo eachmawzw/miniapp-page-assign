@@ -266,6 +266,22 @@ const pageAssign = function (config) {
   ];
 
   /*
+   * 禁止一些被使用的方法名
+   * onModel 监听数据更新，双向绑定
+   * getPagePostion 获取页面位置
+   * updatePagePosition 更新页面位置
+   * scrollToPosition 滚动至页面位置
+   * checkVersion 检查小程序版本
+  */
+  const glbalMethods = [
+    'onModel',
+    'getPagePostion',
+    'updatePagePosition',
+    'scrollToPosition',
+    'checkVersion'
+  ];
+
+  /*
    * 原生小程序中一些按钮handler
    * bindGetUserInfo 用户点击该按钮时，会返回获取到的用户信息
    * bindContact 客服消息回调
@@ -296,7 +312,7 @@ const pageAssign = function (config) {
   }
 
   /* 注册自定义事件 */
-  const forbidMethods = [].concat(callbackList);
+  const forbidMethods = [].concat(callbackList).concat(glbalMethods);
   // const forbidMethods = [].concat(callbackList).concat(btnHanlder);
 
   /* 页面原生回调注册 */
@@ -342,7 +358,7 @@ const pageAssign = function (config) {
     }
 
     /* 更新路由信息 */
-    setRoute({query: options}, this);
+    this.setRoute({query: options}, this);
 
     if (this._onLoad) {
       this._onLoad(options);
@@ -434,9 +450,16 @@ const pageAssign = function (config) {
     }
   }
 
+  // 注册setRoute
+  this.setRoute = setRoute;
+  // 注册获取页面位置方法
   this.getPagePostion = getPagePostion;
+  // 注册更新页面位置方法
   this.updatePagePosition = updatePagePosition;
+  // 注册滚动至页面位置方法
   this.scrollToPosition = scrollToPosition;
+  // 注册检查小程序版本方法
+  this.checkVersion = checkVersion;
 }
 
 module.exports = {
