@@ -124,38 +124,46 @@ var addProperty = function addProperty(data, self) {
   return _data;
 };
 
+var setLaunchInfo = function setLaunchInfo(launchInfo) {
+  wx.$launchInfo = launchInfo;
+};
+
 // 设置路由信息，会注册到this上下文和wx全局
 var setRoute = function setRoute() {
   var routeInfo = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : { query: {} };
   var self = arguments[1];
 
-  // 保存路由信息
-  if (wx.$route) {
-    Object.keys(wx.$route).forEach(function (key) {
-      if (!routeInfo[key]) {
-        routeInfo[key] = wx.$route[key];
-      }
+  var router = [];
+  var currentPages = getCurrentPages();
+  if (currentPages.length > 0) {
+    currentPages.forEach(function (page) {
+      router.push({
+        query: page.options,
+        path: page.route
+      });
     });
-
-    // 保存上一个页面参数
-    routeInfo.fromQuery = JSON.parse(JSON.stringify(wx.$route.query));
-    routeInfo.fromPageLen = wx.$route.pageLen || 0;
-    routeInfo.fromPagePath = wx.$route.pagePath || '';
   }
 
-  // 保存当前页面参数
-  routeInfo.pageLen = getCurrentPages().length;
-  // 保存pathPath
-  var page = getCurrentPages().pop();
-  var pagePath = void 0;
-  if (page) {
-    pagePath = page.__route__;
+  if (router.length == 0) {
+    wx.$route = {};
   }
-  routeInfo.pagePath = pagePath;
+  if (router.length == 1) {
+    wx.$route = router[0];
+  } else if (router.length > 1) {
+    var fromPage = router[router.length - 2];
+    wx.$route = router[router.length - 1];
+    wx.$route.fromQuery = fromPage.query;
+    wx.$route.fromPath = fromPage.path;
+  }
 
-  // 注册到wx全局变量
-  wx.$route = routeInfo;
-  // 注册到self上下文
+  Object.keys(wx.$launchInfo).forEach(function (key) {
+    wx.$route[key] = wx.$launchInfo[key];
+  });
+
+  Object.keys(routeInfo).forEach(function (key) {
+    wx.$route[key] = routeInfo[key];
+  });
+
   if (self) {
     self.$route = wx.$route;
   }
@@ -363,7 +371,9 @@ var pageAssign = function pageAssign(config) {
   };
 
   this.onShow = function () {
-    // this.scrollToPosition(this.$route.pagePath);
+    // 微信小程序的页面并不会被销毁，在点击返回按钮时，需要更新路由信息
+    this.setRoute({ query: this.options, path: this.route });
+
     if (this._onShow) {
       this._onShow();
     }
@@ -460,6 +470,7 @@ var pageAssign = function pageAssign(config) {
 };
 
 module.exports = {
+  setLaunchInfo: setLaunchInfo,
   setRoute: setRoute,
   pageAssign: pageAssign,
   checkVersion: checkVersion

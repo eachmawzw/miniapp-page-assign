@@ -122,35 +122,43 @@ const addProperty = function (data, self) {
   return _data;
 };
 
+const setLaunchInfo = function (launchInfo) {
+  wx.$launchInfo = launchInfo;
+};
+
 // 设置路由信息，会注册到this上下文和wx全局
 const setRoute = function (routeInfo = {query: {}}, self) {
-  // 保存路由信息
-  if (wx.$route) {
-    Object.keys(wx.$route).forEach(key => {
-      if (!routeInfo[key]) {
-        routeInfo[key] = wx.$route[key];
-      }
+  let router = [];  
+  let currentPages = getCurrentPages();
+  if (currentPages.length > 0) {
+    currentPages.forEach(page => {
+      router.push({
+        query: page.options,
+        path: page.route
+      });
     });
-
-    // 保存上一个页面参数
-    routeInfo.fromQuery = JSON.parse(JSON.stringify(wx.$route.query));
-    routeInfo.fromPageLen = wx.$route.pageLen || 0;
-    routeInfo.fromPagePath = wx.$route.pagePath || '';
   }
 
-  // 保存当前页面参数
-  routeInfo.pageLen = getCurrentPages().length;
-  // 保存pathPath
-  let page = getCurrentPages().pop();
-  let pagePath;
-  if (page) {
-    pagePath = page.__route__;
+  if (router.length == 0) {
+    wx.$route = {};
   }
-  routeInfo.pagePath = pagePath;
-  
-  // 注册到wx全局变量
-  wx.$route = routeInfo;
-  // 注册到self上下文
+  if (router.length == 1) {
+    wx.$route = router[0];
+  } else if (router.length > 1) {
+    const fromPage = router[router.length-2];
+    wx.$route = router[router.length-1];
+    wx.$route.fromQuery = fromPage.query;
+    wx.$route.fromPath = fromPage.path;
+  }
+
+  Object.keys(wx.$launchInfo).forEach(key => {
+    wx.$route[key] = wx.$launchInfo[key];
+  });
+
+  Object.keys(routeInfo).forEach(key => {
+    wx.$route[key] = routeInfo[key];
+  });
+
   if (self) {
     self.$route = wx.$route;
   }
@@ -366,7 +374,9 @@ const pageAssign = function (config) {
   }
 
   this.onShow = function () {
-    // this.scrollToPosition(this.$route.pagePath);
+    // 微信小程序的页面并不会被销毁，在点击返回按钮时，需要更新路由信息
+    this.setRoute({query: this.options, path: this.route});
+
     if (this._onShow) {
       this._onShow();
     }
@@ -463,6 +473,7 @@ const pageAssign = function (config) {
 }
 
 module.exports = {
+  setLaunchInfo,
   setRoute,
   pageAssign,
   checkVersion
