@@ -12,7 +12,6 @@ In app.js
 ```
 import {setLaunchInfo, pageAssign} from './utils/miniapp-page-assign';
 App({
-  mixin: [],
   onShow: function (options) {
     // 保存进入页面的信息
     setLaunchInfo(options);
@@ -111,6 +110,39 @@ Page(new wx.pageAssign({
     // other code
   },
 }));
+```
+
+### 全局分享设置
+In app.js
+```
+import {initGlobalShare} from './utils/miniapp-page-assign';
+App({
+  onLaunch: function () {
+    // 设置全局分享
+    initGlobalShare({
+      title: '我是全局的分享标题',
+      path: '/pages/index/index', // 所有页面的分享都会是这个页面
+      imageUrl: '', // 所有页面的分享都会是这个图片
+      forbidden: false // 如果启用forbidden，则所有的页面都禁用分享
+    });
+    // ...other code
+  }
+  // ...other code
+});
+```
+
+### 检查版本更新
+In app.js
+```
+import {checkVersion} from './utils/miniapp-page-assign';
+App({
+  onShow: function () {
+    // 检查更新
+    checkVersion();
+    // ...other code
+  }
+  // ...other code
+});
 ```
 
 ### this.onModel方法双向绑定数据
