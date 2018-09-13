@@ -10,12 +10,12 @@ npm install miniapp-page-assign
 
 In app.js
 ```
-import {setRoute, pageAssign} from './utils/miniapp-page-assign';
+import {setLaunchInfo, pageAssign} from './utils/miniapp-page-assign';
 App({
   mixin: [],
   onShow: function (options) {
     // 保存进入页面的信息
-    setRoute(options);
+    setLaunchInfo(options);
     // ...other code
   },
   onLaunch: function () {
@@ -58,18 +58,18 @@ this.$data.key = 'value';
 访问当前route可以得到当前的页面路由，传参和上一个页面的路由
 
 在app.js中调用的
-`setRoute(options);`
+`setLaunchInfo(options);`
 是很重要的一步，它用于保存用户进入小程序的场景值、shareTicket等信息
 
 ```
 // other code
 onLoad () {
-  console.log(this.$route.pagePath) //当前小程序页面路径
+  console.log(this.$route.path) //当前小程序页面路径
   console.log(this.$route.query)  //当前小程序页面参数
-  console.log(this.$route.pageLen)  //当前小程序页面栈位置
-  console.log(this.$route.fromPagePath)  //上一个小程序页面路径
+  console.log(this.$route.formPath)  //上一个小程序页面路径
   console.log(this.$route.fromQuery)  //上一个小程序页面参数
-  console.log(this.$route.fromPageLen)  //上一个小程序页面栈位置
+  
+  // 以下几个如果没有在app.js中调用setLaunchInfo则不存在
   console.log(this.$route.scene)  // 进入页面场景值
   console.log(this.$route.shareTicket) // 进入页面带上的shareTicket
   console.log(this.$route.referrerInfo) // 进入小程序带上的卡券信息
