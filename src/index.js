@@ -164,6 +164,21 @@ const setRoute = function (routeInfo = {query: {}}, self) {
   }
 }
 
+let globalShareInfo = {
+  title: '这是一个分享标题',
+  path: '/pages/index/index',
+  imageUrl: ''
+};
+
+const initGlobalShare = function (shareInfo) {
+  globalShareInfo = {
+    title: shareInfo.title || '这是一个分享标题',
+    path: shareInfo.path || '/pages/index/index',
+    imageUrl: shareInfo.imageUrl || '',
+    forbidden: shareInfo.forbidden ? true : false
+  };
+};
+
 const getPagePostion = function (page = 'pages/index/index') {
   // 获取当前指定页面滚动位置
   let pagePosition = wx.getStorageSync('pagePosition');
@@ -276,6 +291,7 @@ const pageAssign = function (config) {
   /*
    * 禁止一些被使用的方法名
    * onModel 监听数据更新，双向绑定
+   * initGlobalShare 设置全局分享信息
    * getPagePostion 获取页面位置
    * updatePagePosition 更新页面位置
    * scrollToPosition 滚动至页面位置
@@ -283,6 +299,7 @@ const pageAssign = function (config) {
   */
   const glbalMethods = [
     'onModel',
+    'initGlobalShare',
     'getPagePostion',
     'updatePagePosition',
     'scrollToPosition',
@@ -368,6 +385,11 @@ const pageAssign = function (config) {
     /* 更新路由信息 */
     this.setRoute({query: options}, this);
 
+    // 如果设置了禁用分享，则onLoad时禁用它
+    if (globalShareInfo.forbidden) {
+      wx.hideShareMenu();
+    }
+
     if (this._onLoad) {
       this._onLoad(options);
     }
@@ -416,10 +438,7 @@ const pageAssign = function (config) {
     if (this._onShareAppMessage) {
       return this._onShareAppMessage(obj);
     } else {
-      return {
-        title: '这是一个分享标题',
-        path: '/pages/index/index'
-      }
+      return globalShareInfo;
     }
   }
 
@@ -462,6 +481,8 @@ const pageAssign = function (config) {
 
   // 注册setRoute
   this.setRoute = setRoute;
+  // 注册全局分享设置
+  this.initGlobalShare = initGlobalShare;
   // 注册获取页面位置方法
   this.getPagePostion = getPagePostion;
   // 注册更新页面位置方法
@@ -475,6 +496,7 @@ const pageAssign = function (config) {
 module.exports = {
   setLaunchInfo,
   setRoute,
+  initGlobalShare,
   pageAssign,
   checkVersion
 }
